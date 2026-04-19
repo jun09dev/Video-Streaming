@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Player</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+    <style>
+        body { background: #0f172a; color: white; }
+
+        .container { max-width: 1200px; }
+
+        .video-box {
+            width: 100%;
+            background: black;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .video-player {
+            width: 100%;
+            height: 400px;
+        }
+
+        .song-list {
+            margin-top: 20px;
+        }
+
+        .song-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .song-item:hover {
+            background: #1e293b;
+        }
+
+        .thumb-small {
+            width: 120px;
+            height: 70px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+        }
+
+        .info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 5px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container py-3">
+
+    <h4 class="mb-3">🎵 Player</h4>
+
+    <div class="video-box">
+        <video id="mainVideo" class="video-player" controls></video>
+    </div>
+
+    <div id="videoTitle" class="mt-2 fw-bold"></div>
+    <div id="videoUser" class="info"></div>
+
+    <div id="songList" class="song-list"></div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+
+    const API_BASE = "http://localhost:8080";
+    const PLAY_ID = (id) => `/api/play/${id}`;
+
+    let currentSongId = null;
+    let watchSeconds = 0;
+    let watchInterval = null;
+
+    let songList = [];
+    let currentVideo = document.getElementById("mainVideo");
+
+    // ===== AUTH =====
+    function getToken() {
+        return localStorage.getItem("token");
+    }
+
+    // ⚠️ FIX: lấy userId từ local (nếu chưa có thì random)
+    function getUserId() {
+        let id = localStorage.getItem("userId");
+        if (!id) {
+            id = Math.floor(Math.random() * 1000000);
+            localStorage.setItem("userId", id);
+        }
+        return id;
+    }
+
+    // ===== API =====
+    async function callApi(url) {
+        return fetch(API_BASE + url, {
+            headers: {
+                Authorization: "Bearer " + getToken()
+            }
+        });
+    }
+
+    // ===== GET songId từ URL =====
+    function getSongIdFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get("songId");
+    }
+
+    // ===== LOAD LIST =====
+    async function loadSongs() {
+        const res = await callApi("/api/get_file_list");
+        const data = await res.json();
+
+        songList = data;
+        renderList();
+
+        const songId = getSongIdFromUrl();
+        if (songId) {
+            const song = songList.find(s => s.id == songId);
+            if (song) playSong(song, false); // ❌ KHÔNG autoplay
+        }
+    }
+
+    // ===== RENDER =====
+    function renderList() {
+        const list = document.getElementById("songList");
+        list.innerHTML = "";
+
+        songList.forEach(song => {
+            const div = document.createElement("div");
+            div.className = "song-item";
+
+            div.onclick = () => playSong(song, true); // ✅ user click
+
+            div.innerHTML = `
+            <img class="thumb-small"
+                 src="${song.thumbnailUrl || 'https://via.placeholder.com/120x70'}">
+
+            <div>
+                <div class="title">${song.title}</div>
+
+                <div class="info">
+                    <img class="avatar"
+                         src="${song.avatarUrl || 'https://via.placeholder.com/30'}">
+                    ${song.username}
+                </div>
+            </div>
+        `;
+
+            list.appendChild(div);
+        });
+    }
+
+    // ===== TRACKING =====
+    function startTracking() {
+
+        if (watchInterval) clearInterval(watchInterval);
+
+        watchInterval = setInterval(() => {
+
+            if (document.hidden) return;
+            if (currentVideo.paused) return;
+
+            watchSeconds += 5;
+            console.log("watch:", watchSeconds);
+
+            fetch(`${API_BASE}/api/track/watch/time`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + getToken()
+                },
+                body: JSON.stringify({
+                    videoId: currentSongId,
+                    seconds: 5
+                })
+            });
+
+        }, 5000);
+    }
+
+    // ===== PLAY =====
+    async function playSong(song, isUserClick) {
+
+        if (!song.hlsUrl) {
+            alert("Đang xử lý...");
+            return;
+        }
+
+        currentSongId = song.id;
+        watchSeconds = 0;
+
+        if (watchInterval) clearInterval(watchInterval);
+
+        const res = await callApi(PLAY_ID(song.id));
+        const data = await res.json();
+        const url = data.hlsUrl;
+
+        document.getElementById("videoTitle").innerText = song.title;
+        document.getElementById("videoUser").innerHTML = `
+        <img class="avatar"
+             src="${song.avatarUrl || 'https://via.placeholder.com/30'}">
+        ${song.username}
+    `;
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(currentVideo);
+        } else {
+            currentVideo.src = url;
+        }
+
+        // ❗ FIX autoplay error
+        if (isUserClick) {
+            currentVideo.play().catch(e => console.log("Play blocked:", e));
+        }
+
+        startTracking();
+    }
+
+    // ===== EVENTS =====
+    currentVideo.addEventListener("play", () => {
+        console.log("▶ play");
+    });
+
+    currentVideo.addEventListener("pause", () => {
+        console.log("⏸ pause");
+    });
+
+    window.addEventListener("beforeunload", () => {
+        if (watchInterval) clearInterval(watchInterval);
+    });
+
+    // ===== INIT =====
+    window.onload = loadSongs;
+
+</script>
+
+</body>
+</html>

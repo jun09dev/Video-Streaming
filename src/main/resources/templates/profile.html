@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+    <style>
+        body {
+            background: #536ca8;
+            color: #e2e8f0;
+            font-family: Arial;
+        }
+
+        .container {
+            max-width: 1000px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #22c55e;
+        }
+
+        h2, h4, h5 {
+            color: #f1f5f9;
+        }
+
+        /* GRID */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        /* CARD VIDEO */
+        .song-card {
+            background: #273c60;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: 0.3s;
+        }
+
+        .song-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        }
+
+        .thumbnail-container {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .thumbnail {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+        }
+
+        .play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            font-size: 35px;
+            background: rgba(189, 177, 177, 0.6);
+            border-radius: 50%;
+            padding: 8px 12px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .thumbnail-container:hover .play-overlay {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .card-body {
+            padding: 10px;
+        }
+
+        .title {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            border: none;
+            margin-top: 5px;
+        }
+
+        .media-player {
+            width: 100%;
+            max-height: 250px;
+        }
+
+        input {
+            background: #e9eaec;
+            color: white;
+            border: 1px solid #23476b;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container py-4">
+    <h2 class="text-center mb-4">👤 Trang cá nhân</h2>
+
+    <!-- PROFILE -->
+    <div class="card text-center">
+
+        <img id="avatar" class="avatar mb-2" src="https://via.placeholder.com/120"/>
+
+        <div id="userInfo">Đang tải...</div>
+
+        <hr>
+
+        <h5>📸 Upload Avatar</h5>
+        <input type="file" id="avatarInput" class="form-control mb-2">
+        <button class="btn btn-success" onclick="uploadAvatar()">Upload</button>
+
+        <hr>
+
+        <button class="btn btn-danger" onclick="logout()">Đăng xuất</button>
+
+    </div>
+
+    <!-- SONG LIST -->
+    <div class="card">
+        <h4>🎵 Bài hát đã upload</h4>
+        <div id="songList" class="grid"></div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<script>
+
+    const API_BASE = "http://localhost:8080";
+    const token = localStorage.getItem("token");
+
+    let currentMedia = null;
+
+    if (!token) {
+        alert("Bạn chưa đăng nhập!");
+        window.location.href = "/";
+    }
+
+    // ===== LOAD PROFILE =====
+    async function loadProfile() {
+
+        const res = await fetch(API_BASE + "/api/profile", {
+            headers: { Authorization: "Bearer " + token }
+        });
+
+        const data = await res.json();
+
+        document.getElementById("userInfo").innerHTML = `
+        <p style="font-size:18px;font-weight:bold">${data.username}</p>
+        <p style="color:#ffffff">${data.email}</p>
+    `;
+
+        document.getElementById("avatar").src =
+            data.avatarUrl || "https://via.placeholder.com/120";
+
+        loadUserSongs(data.id);
+    }
+
+    // ===== LOAD SONGS =====
+    async function loadUserSongs(userId) {
+
+        const res = await fetch(API_BASE + `/api/user/${userId}/songs`, {
+            headers: { Authorization: "Bearer " + token }
+        });
+
+        const data = await res.json();
+
+        const list = document.getElementById("songList");
+        list.innerHTML = "";
+
+        data.forEach((song, index) => {
+
+            const div = document.createElement("div");
+            div.className = "song-card";
+
+            div.innerHTML = `
+            <div class="thumbnail-container" onclick="playSong(${index}, this)">
+                <img class="thumbnail"
+                     src="${song.thumbnailUrl || 'https://via.placeholder.com/400x200'}">
+                <div class="play-overlay">▶</div>
+            </div>
+
+            <div class="player-container"></div>
+
+            <div class="card-body">
+                <div class="title">${song.title}</div>
+                <button class="btn btn-danger btn-sm w-100"
+                        onclick="deleteSong(${song.id}, event)">
+                    🗑 Xoá
+                </button>
+            </div>
+        `;
+
+            list.appendChild(div);
+        });
+
+        window.userSongs = data;
+    }
+
+    // ===== PLAY =====
+    function playSong(index, el) {
+
+        const song = window.userSongs[index];
+
+        if (!song.hlsUrl) {
+            alert("Video đang xử lý...");
+            return;
+        }
+
+        if (currentMedia) {
+            currentMedia.pause();
+            currentMedia.remove();
+        }
+
+        const container = el.closest(".song-card").querySelector(".player-container");
+
+        const video = document.createElement("video");
+        video.className = "media-player";
+        video.controls = true;
+
+        container.innerHTML = "";
+        container.appendChild(video);
+
+        currentMedia = video;
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(song.hlsUrl);
+            hls.attachMedia(video);
+        } else {
+            video.src = song.hlsUrl;
+        }
+
+        video.play();
+    }
+
+    // ===== DELETE =====
+    async function deleteSong(songId, event) {
+
+        event.stopPropagation();
+
+        if (!confirm("Bạn chắc chắn muốn xoá?")) return;
+
+        const res = await fetch(API_BASE + `/api/delete/song/${songId}`, {
+            method: "DELETE",
+            headers: { Authorization: "Bearer " + token }
+        });
+
+        if (res.ok) {
+            alert("✅ Đã xoá!");
+            loadProfile();
+        } else {
+            alert("❌ Lỗi!");
+        }
+    }
+
+    // ===== AVATAR =====
+    async function uploadAvatar() {
+
+        const file = document.getElementById("avatarInput").files[0];
+        if (!file) return alert("Chọn file!");
+
+        const fileName = Date.now() + "_" + file.name;
+
+        const res = await fetch(API_BASE + `/api/upload_avatar_url?fileName=${fileName}`, {
+            headers: { Authorization: "Bearer " + token }
+        });
+
+        const data = await res.json();
+
+        await fetch(data.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file
+        });
+
+        await fetch(API_BASE + "/api/save_avatar", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token
+            },
+            body: JSON.stringify({ objectName: data.objectName })
+        });
+
+        alert("✅ Upload xong!");
+        loadProfile();
+    }
+
+    function logout() {
+        localStorage.removeItem("token");
+        window.location.href = "/";
+    }
+
+    loadProfile();
+
+</script>
+
+</body>
+</html>
