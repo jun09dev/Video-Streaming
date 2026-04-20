@@ -4,6 +4,7 @@ import com.example.service.dto.request.UserCreatRequestDto;
 import com.example.service.dto.response.UserCreatResponseDto;
 import com.example.service.entity.User;
 import com.example.service.repository.UserRepository;
+import com.example.service.service.EmailService;
 import com.example.service.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,6 +17,9 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private EmailService  emailService;
 
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
@@ -45,6 +49,11 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(UserCreat);
 
+        // 👉 gửi mail welcome
+        emailService.sendWelcomeEmail(
+                UserCreat.getEmail(),
+                UserCreat.getUsername()
+        );
 //        connection DB
 
 //        return response

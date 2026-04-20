@@ -4,6 +4,7 @@ import com.example.service.dto.request.ForgotPasswordRequestDto;
 import com.example.service.dto.request.ResetPasswordRequestDto;
 import com.example.service.dto.request.UserLoginRequestDto;
 import com.example.service.dto.response.ForgotPasswordResponseDto;
+import com.example.service.dto.response.IpLocationResponseDto;
 import com.example.service.dto.response.ResetPasswordResponseDto;
 import com.example.service.entity.PasswordResetToken;
 import com.example.service.entity.User;
@@ -11,7 +12,9 @@ import com.example.service.repository.PasswordResetTokenRepository;
 import com.example.service.service.AuthService;
 import com.example.service.repository.UserRepository;
 import com.example.service.service.EmailService;
+import com.example.service.service.GeoLocationService;
 import com.example.service.service.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -43,37 +46,97 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private EmailService emailService;
 
-    @Override
-    public String login(UserLoginRequestDto req) {
+    @Autowired
+    private GeoLocationService geoLocationService;
 
-        // 2. Tìm user theo email
-//        User user = userRepository.findByEmail(req.getEmail().trim());
+
+
+
+
+
+
+
+
+    @Override
+    public String login(UserLoginRequestDto req, String ip, HttpServletRequest request) {
+
         User user = userRepository.findByEmail(req.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (user == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        if (!passwordEncoder.matches(req.getPassword().trim(), user.getPassword())) {
+            throw new RuntimeException("Invalid email or password");
         }
 
-        // 3. Check password
-        boolean passwordMatches = passwordEncoder.matches(
-                req.getPassword().trim(),
-                user.getPassword()
-        );
+        String userAgent = request.getHeader("User-Agent");
 
-        if (!passwordMatches) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        boolean isNewIp = user.getLastLoginIp() == null || !user.getLastLoginIp().equals(ip);
+        boolean isNewDevice = user.getLastUserAgent() == null || !user.getLastUserAgent().equals(userAgent);
+
+        if (isNewIp || isNewDevice) {
+
+            IpLocationResponseDto locationDto = geoLocationService.getLocationByIp(ip);
+
+            String location = geoLocationService.buildLocationString(locationDto);
+            String mapUrl = geoLocationService.buildGoogleMapUrl(locationDto);
+            String isp = locationDto != null ? locationDto.getIsp() : "Unknown";
+
+            try {
+                emailService.sendLoginAlertEmail(
+                        user.getEmail(),
+                        user.getUsername(),
+                        ip,
+                        location,
+                        mapUrl,
+                        isp
+                );
+            } catch (Exception e) {
+                // log thôi, không fail login
+            }
         }
 
-        // 4. Tạo claims
+        // update info
+        user.setLastLoginIp(ip);
+        user.setLastUserAgent(userAgent);
+        userRepository.save(user);
+
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", user.getEmail());
-        claims.put("username", user.getUsername());
         claims.put("userId", user.getId());
 
-        // 5. Generate JWT
         return jwtService.generateToken(claims);
     }
+
+//    @Override
+//    public String login(UserLoginRequestDto req) {
+//
+//        // 2. Tìm user theo email
+////        User user = userRepository.findByEmail(req.getEmail().trim());
+//        User user = userRepository.findByEmail(req.getEmail())
+//                .orElseThrow(() -> new RuntimeException("User not found"));
+//
+//        if (user == null) {
+//            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+//        }
+//
+//        // 3. Check password
+//        boolean passwordMatches = passwordEncoder.matches(
+//                req.getPassword().trim(),
+//                user.getPassword()
+//        );
+//
+//        if (!passwordMatches) {
+//            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+//        }
+//
+//        // 4. Tạo claims
+//        Map<String, Object> claims = new HashMap<>();
+//        claims.put("email", user.getEmail());
+//        claims.put("username", user.getUsername());
+//        claims.put("userId", user.getId());
+//
+//        // 5. Generate JWT
+//        return jwtService.generateToken(claims);
+//    }
 
     @Transactional
     @Override
@@ -101,6 +164,12 @@ public class AuthServiceImpl implements AuthService {
         // 5. mark used (QUAN TRỌNG)
         resetToken.setUsed(true);
         tokenRepository.save(resetToken);
+
+        // 👉 Gửi email ở đây
+        emailService.sendPasswordResetSuccessEmail(
+                user.getEmail(),
+                user.getUsername()
+        );
 
         return new ResetPasswordResponseDto("Đổi mật khẩu thành công");
     }
