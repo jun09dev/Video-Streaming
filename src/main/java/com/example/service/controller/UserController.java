@@ -2,13 +2,8 @@ package com.example.service.controller;
 
 //import ch.qos.logback.core.model.Model;
 import com.example.service.constant.UrlConstant;
-import com.example.service.dto.WatchRequest;
-import com.example.service.dto.request.ForgotPasswordRequestDto;
-import com.example.service.dto.request.ResetPasswordRequestDto;
-import com.example.service.dto.request.SaveSongRequestDto;
-import com.example.service.dto.request.UserCreatRequestDto;
+import com.example.service.dto.request.*;
 import com.example.service.dto.response.*;
-import com.example.service.entity.PasswordResetToken;
 import com.example.service.entity.Song;
 import com.example.service.entity.SongDocument;
 import com.example.service.entity.User;
@@ -19,29 +14,17 @@ import com.example.service.repository.UserRepository;
 import com.example.service.service.*;
 //import com.example.service.service.impl.EmailService;
 import com.example.service.service.impl.JwtServiceImpl;
-import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
-import io.minio.http.Method;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.ui.Model;
-import org.springframework.core.io.Resource;
 
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 public class UserController {
@@ -157,7 +140,8 @@ public class UserController {
 
         return ip.equals("127.0.0.1")   // localhost
                 || ip.equals("::1")         // IPv6 localhost
-                || ip.equals("61.106.154.128") // IP server HLS
+                || ip.equals("61.106.158.190") // IP server HLS
+                || ip.equals("61.106.157.117") //IP server HLS
                 || ip.equals("61.106.148.251"); //IP server HLS
     }
     @CrossOrigin("*")
@@ -326,6 +310,30 @@ public class UserController {
             @RequestBody ResetPasswordRequestDto request) {
 
         return ResponseEntity.ok(authService.resetPassword(request));
+    }
+
+    @PutMapping(UrlConstant.UPDATE_USERNAME)
+    public ResponseEntity<?> updateUsername(
+            @RequestBody UpdateUsernameRequestDto request,
+            HttpServletRequest httpRequest
+    ) {
+
+        String authHeader = httpRequest.getHeader("Authorization");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body("No token");
+        }
+
+        String token = authHeader.substring(7);
+
+        String email = jwtService.getEmailFromToken(token);
+
+        UserResponseDto response = userService.updateUsername(
+                email,
+                request.getNewUsername()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
 }

@@ -16,8 +16,8 @@ public class HlsClientService {
                         java.nio.charset.StandardCharsets.UTF_8
                 );
 
-//                String url = "http://61.106.148.251:8080/hls/process?file=" + encoded + "&songId=" + songId;
-                String url = "http://61.106.157.117:8080/hls/process?file=" + encoded + "&songId=" + songId;
+                String url = "http://localhost:8081/hls/process?file=" + encoded + "&songId=" + songId;
+//                String url = "http://61.106.157.117:8080/hls/process?file=" + encoded + "&songId=" + songId;
 
                 restTemplate.postForObject(url, null, String.class); // body = null
 

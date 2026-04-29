@@ -58,4 +58,19 @@ public class JwtServiceImpl implements JwtService {
 
         return ((Number) claims.get("userId")).longValue();
     }
+
+    @Override
+    public String getEmailFromToken(String token) {
+
+        token = token.replace("Bearer ", "");
+
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(secretKey.getBytes(StandardCharsets.UTF_8))
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        return claims.get("email", String.class);
+    }
+
 }

@@ -13,4 +13,6 @@ public interface JwtService {
 
     Long getUserIdFromToken(String token);
 
+    String getEmailFromToken(String token);
+
 }
