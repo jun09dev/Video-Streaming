@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+
+<div style="max-width:600px;margin:40px auto;background:#ffffff;border-radius:14px;
+            box-shadow:0 6px 18px rgba(0,0,0,0.08);overflow:hidden;">
+
+  <!-- HEADER -->
+  <div style="background:linear-gradient(135deg,#00c6ff,#0072ff);padding:25px;text-align:center;color:white;">
+    <h1 style="margin:0;font-size:24px;">🎉 Welcome aboard!</h1>
+    <p style="margin:5px 0 0;font-size:14px;opacity:0.9;">
+      Chúng tôi rất vui khi có bạn ở đây
+    </p>
+  </div>
+
+  <!-- BODY -->
+  <div style="padding:30px;">
+
+    <p style="font-size:16px;color:#333;">
+      Xin chào <b th:text="${username}"></b> 👋
+    </p>
+
+    <p style="color:#555;font-size:15px;line-height:1.6;">
+      Tài khoản của bạn đã được tạo thành công.
+      Bạn có thể bắt đầu khám phá hệ thống ngay bây giờ.
+    </p>
+
+    <!-- FEATURE BOX -->
+    <div style="background:#f9fafb;border-radius:8px;padding:15px;margin:20px 0;">
+      <p style="margin:0;color:#555;">
+        🚀 Truy cập hệ thống nhanh chóng<br/>
+        🔐 Bảo mật tài khoản của bạn<br/>
+        ⚡ Trải nghiệm dịch vụ tốt nhất
+      </p>
+    </div>
+
+    <!-- CTA BUTTON -->
+    <div style="text-align:center;margin:30px 0;">
+      <a th:href="${loginUrl}"
+         style="background:#0072ff;color:white;padding:14px 28px;
+                      border-radius:8px;text-decoration:none;font-weight:bold;
+                      display:inline-block;">
+        🚀 Bắt đầu ngay
+      </a>
+    </div>
+
+    <!-- INFO -->
+    <div style="background:#e3f2fd;border-left:5px solid #2196f3;
+                    padding:15px;border-radius:6px;">
+      <p style="margin:0;color:#0d47a1;">
+        💡 Nếu bạn không thực hiện đăng ký này, bạn có thể bỏ qua email này.
+      </p>
+    </div>
+
+    <p style="margin-top:25px;color:#555;">
+      Trân trọng,<br/>
+      <b>Team Support</b>
+    </p>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div style="background:#f1f1f1;text-align:center;padding:12px;font-size:12px;color:#888;">
+    © 2026 Your Company. All rights reserved.
+  </div>
+
+</div>
+
+</body>
+</html>

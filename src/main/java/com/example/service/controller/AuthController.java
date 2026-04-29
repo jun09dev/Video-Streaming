@@ -5,7 +5,9 @@ import com.example.service.dto.request.UserGoogleLoginRequestDto;
 import com.example.service.dto.request.UserLoginRequestDto;
 import com.example.service.entity.User;
 import com.example.service.service.AuthService;
+import com.example.service.service.GeoLocationService;
 import com.example.service.service.GoogleAuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,10 +29,20 @@ public class AuthController {
     @Autowired
     private GoogleAuthService googleAuthService;
 
+    @Autowired
+    private GeoLocationService geoLocationService;
+
     @CrossOrigin("*")
     @PostMapping(UrlConstant.API_LOGIN)
-    public Object login(@RequestBody UserLoginRequestDto request) {
-        return authService.login(request);
+    public String login(@RequestBody UserLoginRequestDto req, HttpServletRequest request) {
+
+        String ip = request.getHeader("X-Forwarded-For");
+
+        if (ip == null || ip.isEmpty()) {
+            ip = request.getRemoteAddr();
+        }
+
+        return authService.login(req, ip, request);
     }
 
     @PostMapping(UrlConstant.API_LOGIN_GOOGLE)

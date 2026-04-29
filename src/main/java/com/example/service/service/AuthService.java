@@ -5,10 +5,11 @@ import com.example.service.dto.request.ResetPasswordRequestDto;
 import com.example.service.dto.request.UserLoginRequestDto;
 import com.example.service.dto.response.ForgotPasswordResponseDto;
 import com.example.service.dto.response.ResetPasswordResponseDto;
+import jakarta.servlet.http.HttpServletRequest;
 
 public interface AuthService {
 
-    Object login(UserLoginRequestDto req);
+    String login(UserLoginRequestDto req, String ip, HttpServletRequest request);
 
     ResetPasswordResponseDto resetPassword(ResetPasswordRequestDto request);
 

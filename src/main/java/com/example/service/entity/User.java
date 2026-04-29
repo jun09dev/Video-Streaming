@@ -33,6 +33,10 @@ public class User {
     @Column(name = "provider_id")
     private String providerId;
 
+    private String lastLoginIp;
+
+    private String lastUserAgent;
+
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
     private PasswordResetToken passwordResetToken;
 
