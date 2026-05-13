@@ -15,8 +15,6 @@ public class UrlConstant {
 
     public static final String API_DELETE_ID = "/api/delete/song/{id}";
 
-    public static final String UPLOAD_MUSIC = "/api/upload_music" ;
-
     public static final String GET_FILE_LIST = "/api/get_file_list";
 
     public static final String SEARCH = "/api/search";
@@ -42,4 +40,6 @@ public class UrlConstant {
     public static final String PLAY_ID = "/api/play/{id}";
 
     public static final String UPDATE_USERNAME = "/api/users/update_username";
+
+    public static final String UPDATE_TITLE_SONGS = "/api/songs/title/{title}";
 }

@@ -49,14 +49,6 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private GeoLocationService geoLocationService;
 
-
-
-
-
-
-
-
-
     @Override
     public String login(UserLoginRequestDto req, String ip, HttpServletRequest request) {
 
@@ -105,38 +97,6 @@ public class AuthServiceImpl implements AuthService {
 
         return jwtService.generateToken(claims);
     }
-
-//    @Override
-//    public String login(UserLoginRequestDto req) {
-//
-//        // 2. Tìm user theo email
-////        User user = userRepository.findByEmail(req.getEmail().trim());
-//        User user = userRepository.findByEmail(req.getEmail())
-//                .orElseThrow(() -> new RuntimeException("User not found"));
-//
-//        if (user == null) {
-//            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
-//        }
-//
-//        // 3. Check password
-//        boolean passwordMatches = passwordEncoder.matches(
-//                req.getPassword().trim(),
-//                user.getPassword()
-//        );
-//
-//        if (!passwordMatches) {
-//            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
-//        }
-//
-//        // 4. Tạo claims
-//        Map<String, Object> claims = new HashMap<>();
-//        claims.put("email", user.getEmail());
-//        claims.put("username", user.getUsername());
-//        claims.put("userId", user.getId());
-//
-//        // 5. Generate JWT
-//        return jwtService.generateToken(claims);
-//    }
 
     @Transactional
     @Override
